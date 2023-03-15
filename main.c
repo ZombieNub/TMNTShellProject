@@ -3,17 +3,17 @@
 
 int value = 5;
 int received_value;
-Option example;
+Error example;
 
 int main() {
-    example = new_some((void*)&value);
+    example = new_ok((void*)&value);
     // or
-    // example = new_none();
-    if (example.is_some) {
+    // example = new_err(-1, "Forced error occured for testing purposes.");
+    if (example.is_ok) {
         received_value = *(int*)example.value_ptr;
         printf("Received value: %d\n", received_value);
     } else {
-        printf("No value received.\n");
+        printf("Error received (%d): %s\n", example.error_code, example.error_string);
     }
     return 0;
 }
