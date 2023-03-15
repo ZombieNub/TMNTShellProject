@@ -14,13 +14,12 @@ Error sish() {
     for (i = 0; i < 3; i++) {
         printf("sish> ");
         words_result = read_from_user(&word_count);
-        if (words_result.is_ok) {
-            words = *(char***)words_result.value_ptr;
-            for (j = 0; j < word_count; j++) {
-                printf("(%d): %s\n", j, words[j]);
-            }
-        } else {
+        if (!words_result.is_ok) {
             return words_result;
+        }
+        words = *(char***)words_result.value_ptr;
+        for (j = 0; j < word_count; j++) {
+            printf("(%d): %s\n", j, words[j]);
         }
     }
     return new_ok(BLANK);
