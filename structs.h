@@ -1,3 +1,6 @@
+#ifndef HEADER_GUARD_STRUCTS
+#define HEADER_GUARD_STRUCTS
+
 // Certain values in the Option and Error structs do not need to be initialized depending on the "is" state.
 // For instance, value_ptr doesn't need to be initialized if is_some or is_ok respectively are 0. They can be left as either NULL or garbage data,
 // as they shouldn't be read in the case of them being 0.
@@ -33,6 +36,8 @@ enum CommandType {
 // so this struct exists to mean "I'm not intending to return anything if things went well"
 // This also means no dereferencing is needed in the case of a valid return, so Blank won't ever be read anyway
 typedef struct Blank {} Blank;
+Blank blank;
+#define BLANK (void*)&blank
 
 // Easy ways to construct Option and Error types
 Option new_some(void* value_ptr);
@@ -86,3 +91,5 @@ int main() {
     return 0;
 }
 */
+
+#endif
