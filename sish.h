@@ -4,6 +4,6 @@
 #include "structs.h"
 
 Error sish();
-Error read_from_user();
+Error read_from_user(int* token_amt);
 
 #endif
