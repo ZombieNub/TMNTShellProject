@@ -30,6 +30,7 @@ enum CommandType {
     EXIT,
     CD,
     HISTORY,
+    EMPTY, // Occurs if the user just hits enter, or only has whitespace
 };
 
 // Sometimes errors can occur from void functions. Since void means "return nothing", but Error needs returns to happen at all,
