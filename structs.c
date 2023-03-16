@@ -1,5 +1,22 @@
 #include "structs.h"
 
+char* command_to_string(CommandType cmd) {
+    if (cmd == CONSOLE) {
+        return "Console";
+    } else
+    if (cmd == EXIT) {
+        return "Exit";
+    } else
+    if (cmd == CD) {
+        return "CD";
+    } else
+    if (cmd == HISTORY) {
+        return "History";
+    } else {
+        return "I'm not exactly sure how you did this.";
+    }
+}
+
 Option new_some(void* value_ptr) {
     Option opt;
     opt.is_some = 1;

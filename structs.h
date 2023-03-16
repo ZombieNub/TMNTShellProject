@@ -25,13 +25,14 @@ typedef struct Error {
 // If we want to describe "There should be something" we should use Error
 
 // Defines the type of command read from the console
-enum CommandType {
+typedef enum CommandType {
     CONSOLE,
     EXIT,
     CD,
     HISTORY,
-    EMPTY, // Occurs if the user just hits enter, or only has whitespace
-};
+} CommandType;
+
+char* command_to_string(CommandType cmd);
 
 // Sometimes errors can occur from void functions. Since void means "return nothing", but Error needs returns to happen at all,
 // so this struct exists to mean "I'm not intending to return anything if things went well"

@@ -5,5 +5,7 @@
 
 Error sish();
 Error read_from_user(int* token_amt);
+void cleanup_words(char** words, int token_amount);
+CommandType parse(char* command);
 
 #endif
