@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
 #include "structs.h"
 #include "sish.h"
 
 // Error<Blank>
 Error sish() {
     Error words_result;
+    Error command_result;
     char** words;
     int i, j;
     int word_count;
@@ -31,6 +35,22 @@ Error sish() {
         cmd = parse(words[0]);
         if (cmd == EXIT) {
             should_continue = 0;
+        } else
+        if (cmd == CONSOLE) {
+            // Pad the command with an additional NULL character, so that execvp knows the end of the arguments
+            words = realloc(words, sizeof(char) * (word_count + 1));
+            words[word_count] = NULL;
+            command_result = command(words);
+            if (command_result.is_ok) {
+                
+            } else {
+                if (command_result.error_code == 255) {
+                    printf("Something went wrong with the child process. Please try again.\n");
+                } else
+                if (command_result.error_code == 254) {
+                    printf("Command not found. Please try again.\n");
+                }
+            }
         } else {
             printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
         }
@@ -50,10 +70,10 @@ Error read_from_user(int* token_amt) {
 
     getline(&input_str, &line_size, stdin);
     // strtok_r destroys input_str, even if we "redirect" it, so we'll need to duplicate it for the first tokenization loop.
-    dup_input_str = (char*) malloc(sizeof(char) * line_size);
+    dup_input_str = strdup(input_str);
     // The string will need to be tokenized.
     // First, we count the amount of tokens that exist so we can allocate the correct amount of space.
-    for (i = 0, strcpy(dup_input_str, input_str), string_storage = dup_input_str; ; i++, string_storage = NULL) {
+    for (i = 0, string_storage = dup_input_str; ; i++, string_storage = NULL) {
         token = strtok_r(string_storage, " \n", &savetoken);
         if (token == NULL) {
             break;
@@ -103,4 +123,40 @@ CommandType parse(char* command) {
     } else {
         return CONSOLE;
     }
+}
+
+Error command(char** command_and_args) {
+    int child_exit_status;
+    int execvp_result;
+    pid_t fork_result = fork();
+    if (fork_result == -1) {
+        return new_err(errno, "Fork failure");
+    }
+    if (fork_result == 0) {
+        // We are the child process
+        int pipefd[2];
+        int pipe_result = pipe(pipefd);
+        if (pipe_result == -1) {
+            exit(-1);
+        }
+        dup2(pipefd[0], STDIN_FILENO);
+        close(pipefd[0]);
+        //dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        execvp_result = execvp(command_and_args[0], command_and_args);
+        if (execvp_result == -1) {
+            exit(-2);
+        }
+        exit(-2);
+    } else {
+        // We are the parent process
+        wait(&child_exit_status);
+        if (WIFEXITED(child_exit_status)) {
+            int es = WEXITSTATUS(child_exit_status);
+            if (es != 0) {
+                return new_err(es, "Child exit error");
+            }
+        }
+    }
+    return new_ok(BLANK);
 }
