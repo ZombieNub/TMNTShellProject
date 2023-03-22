@@ -37,18 +37,21 @@ Error sish() {
             should_continue = 0;
         } else
         if (cmd == CONSOLE) {
-            // Pad the command with an additional NULL character, so that execvp knows the end of the arguments
-            words = realloc(words, sizeof(char) * (word_count + 1));
-            words[word_count] = NULL;
-            command_result = command(words);
+            command_result = command(words, word_count);
             if (command_result.is_ok) {
-                
             } else {
                 if (command_result.error_code == 255) {
                     printf("Something went wrong with the child process. Please try again.\n");
                 } else
                 if (command_result.error_code == 254) {
                     printf("Command not found. Please try again.\n");
+                } else
+                if (command_result.error_code == 1) {
+                    // A recoverable error has occured in the child process, so we do nothing.
+                } else {
+                    // We cannot guarantee that the shell can keep going
+                    cleanup_words(words, word_count);
+                    return command_result;
                 }
             }
         } else {
@@ -125,7 +128,126 @@ CommandType parse(char* command) {
     }
 }
 
-Error command(char** command_and_args) {
+// Error<BLANK>
+Error command(char** words, int word_count) {
+    int chunk_count;
+    char** chunk;
+    ShellCommand* commands;
+    Error run_result;
+    int offset_counter = 0, has_ended = 0;
+    int i;
+    int pipe_store[2], pipe_result;
+
+    // Get the amount of chunks that exist.
+    while (has_ended == 0) {
+        chunk = delimit_by_pipes(words, word_count, &offset_counter, &has_ended);
+        free(chunk);
+        chunk_count++;
+    }
+    
+    // Allocate space for the commands
+    commands = malloc(sizeof(ShellCommand) * chunk_count);
+    // Fill each command with the relevant chunk
+    for (i = 0, offset_counter = 0; i < chunk_count; i++) {
+        commands[i].command = delimit_by_pipes(words, word_count, &offset_counter, &has_ended);
+    }
+    // Setting up the pipes will be tricky. We should set up n - 1 pipes, and assign them properly.
+    // The great thing about looping this way is that, if we only have one command, we don't construct any pipes
+    for (i = 0; i < (chunk_count - 1); i++) {
+        pipe_result = pipe(pipe_store);
+        // Piping could go wrong. If it does, we can't actually recover, so we should return the error
+        if (pipe_result == -1) {
+            // We need to clean up then return the error
+            for (i = 0; i < chunk_count; i++) {
+                free(commands[i].command);
+            }
+            free(commands);
+            return new_err(0, "Pipe failure in command function");
+        }
+        // At this point, pipe_store[0] is a read, and pipe_store[1] is a write. We need to store them appropriately
+        commands[i].stdout = pipe_store[1];
+        commands[i + 1].stdin = pipe_store[0];
+    }
+    // Now we need to call each command
+    for (i = 0; i < chunk_count; i++) {
+        int should_in = 0, should_out = 0;
+        if (i == 0) {
+            should_in = -1;
+        }
+        if (i == (chunk_count - 1)) {
+            should_out = -1;
+        }
+        run_result = run_and_wait(commands[i], should_in, should_out);
+        // Running could go wrong. If it does, we can't actually recover, so we should return the error
+        if (!run_result.is_ok) {
+            // We need to clean up then return the error
+            for (i = 0; i < chunk_count; i++) {
+                free(commands[i].command);
+            }
+            free(commands);
+            return run_result;
+        }
+    }
+    for (i = 0; i < chunk_count; i++) {
+        free(commands[i].command);
+    }
+    free(commands);
+    return new_ok(BLANK);
+}
+
+// word_counter should begin at 0. has_ended outputs a value and thus anything can be passed in
+char** delimit_by_pipes(char** words, int word_count, int* offset_counter, int* has_ended) {
+    int chunk_size;
+    int offset;
+    int compare_result;
+    int hit_pipe = -1;
+    char** chunk;
+
+    // Loop through each word in words until we hit a pipe or the end of the words.
+    // We do this to count up how many words begin in each chunk
+    for (offset = *offset_counter; offset < word_count; offset++) {
+        int compare_result = strcmp(words[offset], "|");
+        if (compare_result == 0) {
+            // We have encountered a pipe
+            chunk_size = offset - *offset_counter;
+            hit_pipe = 0;
+            *has_ended = 0;
+            break;
+        }
+        // If we have not encountered a pipe, just continue searching for the next one
+    }
+    if (hit_pipe == -1) {
+        // We have reached the end of the commands without hitting a pipe, therefore we need to simply return a chunk containing all words
+        // from offset_counter to end of the commands
+        chunk_size = word_count - *offset_counter;
+        *has_ended = -1;
+    }
+    
+    // Create a new chunk and fill it with the relevant words
+    // Because this is a malloc call, it's the caller's responsibility to free the chunk after it's used
+    chunk = malloc(sizeof(char*) * (chunk_size + 1));
+    for (offset = 0; offset < chunk_size; offset++) {
+        chunk[offset] = words[offset + *offset_counter];
+    }
+    chunk[chunk_size] = NULL;
+
+    // Update the offset counter for the next iteration of this function
+    *offset_counter = *offset_counter + chunk_size + 1;
+    return chunk;
+}
+
+// Error<BLANK>
+Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
+    /*
+    int i;
+    printf("Command (PS: %d, %d):", should_in, should_out);
+    for (i = 0; shcmd.command[i] != NULL; i++) {
+        printf(" %s", shcmd.command[i]);
+    }
+    printf("\n");
+    */
+    //return new_ok(BLANK);
+
     int child_exit_status;
     int execvp_result;
     pid_t fork_result = fork();
@@ -134,22 +256,27 @@ Error command(char** command_and_args) {
     }
     if (fork_result == 0) {
         // We are the child process
-        int pipefd[2];
-        int pipe_result = pipe(pipefd);
-        if (pipe_result == -1) {
-            exit(-1);
+        if (should_in == 0) {
+            dup2(shcmd.stdin, STDIN_FILENO);
+            close(shcmd.stdin);
         }
-        dup2(pipefd[0], STDIN_FILENO);
-        close(pipefd[0]);
-        //dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        execvp_result = execvp(command_and_args[0], command_and_args);
+        if (should_out == 0) {
+            dup2(shcmd.stdout, STDOUT_FILENO);
+            close(shcmd.stdout);
+        }
+        execvp_result = execvp(shcmd.command[0], shcmd.command);
         if (execvp_result == -1) {
             exit(-2);
         }
         exit(-2);
     } else {
         // We are the parent process
+        if (should_in == 0) {
+            close(shcmd.stdin);
+        }
+        if (should_out == 0) {
+            close(shcmd.stdout);
+        }
         wait(&child_exit_status);
         if (WIFEXITED(child_exit_status)) {
             int es = WEXITSTATUS(child_exit_status);

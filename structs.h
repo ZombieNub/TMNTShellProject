@@ -1,6 +1,15 @@
 #ifndef HEADER_GUARD_STRUCTS
 #define HEADER_GUARD_STRUCTS
 
+// Wrapper struct for a shell command, mainly for piping.
+// Should contain a command "chunk", as well as appropriate stdin and stdout pipes
+// If at the beginning, should not have a stdin pipe. If at the end, should not have a stdout pipe
+
+typedef struct ShellCommand {
+    char** command;
+    int stdin, stdout;
+} ShellCommand;
+
 // Certain values in the Option and Error structs do not need to be initialized depending on the "is" state.
 // For instance, value_ptr doesn't need to be initialized if is_some or is_ok respectively are 0. They can be left as either NULL or garbage data,
 // as they shouldn't be read in the case of them being 0.
