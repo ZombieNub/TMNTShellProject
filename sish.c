@@ -33,10 +33,11 @@ Error sish() {
         words = *(char***)words_result.value_ptr;
         // Parse the first word of the input to idenify the type of command
         cmd = parse(words[0]);
+        // EXIT command
         if (cmd == EXIT) {
             should_continue = 0;
         } else
-        if (cmd == CONSOLE) {
+        if (cmd == CONSOLE) { 
             command_result = command(words, word_count);
             if (command_result.is_ok) {
             } else {
@@ -54,7 +55,16 @@ Error sish() {
                     return command_result;
                 }
             }
-        } else {
+        } else
+        // CD command
+        if (cmd == CD) {
+
+        } else
+        // HISTORY command
+        if (cmd == HISTORY) {
+
+        }
+        else {
             printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
         }
         cleanup_words(words, word_count);
