@@ -7,10 +7,7 @@
 #include <errno.h>
 #include "structs.h"
 #include "sish.h"
-#define MAX_HISTORY_COMMANDS 100
 
-HistoryCommand history[MAX_HISTORY_COMMANDS];
-int num_history_commands = 0;
 
 // Error<Blank>
 Error sish() {
@@ -62,41 +59,12 @@ Error sish() {
         } else
         // CD command
         if (cmd == CD) {
-             if (args[1] != NULL) {
-                if (chdir(args[1]) != 0) {
-                    perror("chdir failed");
-                }
-            } 
-            else {
+            if(chdir(dir) == -1) {
+                perror("cd");
+            } else {
                 chdir(getenv("HOME"));
             }
-            continue;
-        } else
-        // HISTORY command
-        /*
-        if (cmd == HISTORY) {
-            for (int i = 0; i < num_history_commands; i++) {
-                printf("%d\t%s\n", history[i].offset, history[i].command);
-            }
-            continue;
-        }
-        if (strcmp(args[0], "history") == 0 && strcmp(args[1], "-c") == 0) {
-            num_history_commands = 0;
-            continue;
-        }
-        if (strcmp(args[0], "history") == 0 && args[1] != NULL) {
-            int offset = atoi(args[1]);
-            if (offset >= 0 && offset < num_history_commands) {
-                char *command = history[offset].command;
-                parse_command(command, args);
-                execute_command(args);
-                continue;
-            }   else {
-                printf("Invalid history offset\n");
-            }
-        } 
-        */
-        else {
+        } else {
             printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
         }
         cleanup_words(words, word_count);
@@ -329,49 +297,3 @@ Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
     }
     return new_ok(BLANK);
 }
-
-/*
-// Function to add an entry to the history
-void add_history_entry(char *command) {
-    // Remove oldest entry if number of entries exceeds MAX_HISTORY_ENTRIES
-    if (num_history_entries >= MAX_HISTORY_ENTRIES) {
-        free(history[0].command);
-        for (int i = 0; i < num_history_entries - 1; i++) {
-            history[i] = history[i+1];
-        }
-        num_history_entries--;
-    }
-    // Add new entry to the end of the history
-    history_entry new_entry;
-    new_entry.offset = num_history_entries;
-    new_entry.command = strdup(command);
-    history[num_history_entries] = new_entry;
-    num_history_entries++;
-}
-
-// Function to execute a command from the history
-void execute_history_command(int offset) {
-    if (offset < 0 || offset >= num_history_entries) {
-        printf("Invalid history offset.\n");
-        return;
-    }
-    printf("Executing command: %s\n", history[offset].command);
-    // TODO: Execute the command
-}
-
-// Function to clear the history
-void clear_history() {
-    for (int i = 0; i < num_history_entries; i++) {
-        free(history[i].command);
-    }
-    num_history_entries = 0;
-}
-
-// Function to change the working directory
-void change_directory(char *dir) {
-    if (chdir(dir) != 0) {
-        printf("cd: %s: No such file or directory\n", dir);
-    }
-}
-
-*/
