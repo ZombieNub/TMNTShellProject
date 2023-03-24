@@ -59,10 +59,12 @@ Error sish() {
         } else
         // CD command
         if (cmd == CD) {
-            if(chdir(dir) == -1) {
-                perror("cd");
+            if (words[1] == NULL) {
+                // If no directory is provided, change to the user's home directory
+                char *home = getenv("HOME");
+                cd(home);
             } else {
-                chdir(getenv("HOME"));
+                cd(words[1]);
             }
         } else {
             printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
@@ -296,4 +298,12 @@ Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
         }
     }
     return new_ok(BLANK);
+}
+
+    int cd(char *dir) {
+        if (chdir(dir) == -1) {
+            perror("cd");
+            return 1;
+        }
+    return 0;
 }
