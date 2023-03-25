@@ -358,6 +358,7 @@ void clear_history() {
     history_count = 0;
 }
 
+/*
 //checks if offset is valid and if so, it will execute the corresponding command
 void execute_history(char* arg) {
     int offset = atoi(arg);
@@ -367,3 +368,4 @@ void execute_history(char* arg) {
     }
     execute_command(history[offset]);
 }
+*/
