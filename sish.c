@@ -7,7 +7,10 @@
 #include <errno.h>
 #include "structs.h"
 #include "sish.h"
+#define MAX_HISTORY_SIZE 100
 
+char* history[MAX_HISTORY_SIZE];
+int history_count = 0;
 
 // Error<Blank>
 Error sish() {
@@ -20,7 +23,7 @@ Error sish() {
 
     int should_continue = 1;
     while (should_continue) {
-        printf("sish> ");
+        char* command = readline("sish> ");
         words_result = read_from_user(&word_count);
         // Confirm that words is "ok"
         if (!words_result.is_ok) {
@@ -32,8 +35,10 @@ Error sish() {
         }
         // Words has been confirmed as "ok" and has a length greater than 0. We can safely unwrap it now.
         words = *(char***)words_result.value_ptr;
+        add_history();
         // Parse the first word of the input to idenify the type of command
         cmd = parse(words[0]);
+
         // EXIT command
         if (cmd == EXIT) {
             should_continue = 0;
@@ -66,6 +71,19 @@ Error sish() {
             } else {
                 cd(words[1]);
             }
+        } else
+        // HiSTORY command
+        if (cmd == HISTORY) {
+            if (words [1] == NULL) {
+                display_history();
+            }
+            if (words[1] == -c) {
+                clear_history();
+            } /*else 
+            if (words[1] == offset) {
+
+            } */
+
         } else {
             printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
         }
@@ -300,10 +318,49 @@ Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
     return new_ok(BLANK);
 }
 
-    int cd(char *dir) {
-        if (chdir(dir) == -1) {
-            perror("cd");
-            return 1;
-        }
+// uses chdir() system call to execute cd command, if invalid it will display error
+int cd(char *dir) {
+    if (chdir(dir) == -1) {
+        perror("cd");
+        return 1;
+    }
     return 0;
+}
+
+// appends commands to the array and increments the count
+// if the count exceeds the history size, it will remove oldest command
+void add_history(char* command) {
+  if (history_count >= MAX_HISTORY_SIZE) {
+    free(history[0]);  // free the oldest command
+    for (int i = 1; i < HISTORY_SIZE; i++) {
+      history[i-1] = history[i];  // shift all commands to the left
+    }
+    history_count--;
+  }
+  history[history_count++] = strdup(command);  // append the new command
+}
+
+// displays the history
+void display_history() {
+  for (int i = 0; i < history_count; i++) {
+    printf("%d %s\n", i, history[i]);
+  }
+}
+
+// clears the history when history -c is used
+void clear_history() {
+  for (int i = 0; i < history_count; i++) {
+    free(history[i]);
+  }
+  history_count = 0;
+}
+
+//checks if offset is valid and if so, it will execute the corresponding command
+void execute_history(char* arg) {
+  int offset = atoi(arg);
+  if (offset < 0 || offset >= history_count) {
+    printf("Invalid offset: %s\n", arg);
+    return;
+  }
+  execute_command(history[offset]);
 }
