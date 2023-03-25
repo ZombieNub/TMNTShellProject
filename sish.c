@@ -14,6 +14,26 @@ int history_count = 0;
 
 // Error<Blank>
 Error sish() {
+    char* input_str;
+    size_t line_size = 0;
+    Error handle_input_result;
+
+    int should_continue = 1;
+    while (should_continue) {
+        line_size = 0;
+        printf("sish> ");
+        getline(&input_str, &line_size, stdin);
+        handle_input_result = handle_input(input_str, &should_continue);
+        free(input_str);
+        if (!handle_input_result.is_ok) {
+            return handle_input_result;
+        }
+    }
+    return new_ok(BLANK);
+}
+
+// Error<BLANK>
+Error handle_input(char* input_str, int* should_continue) {
     Error words_result;
     Error command_result;
     char** words;
@@ -21,88 +41,84 @@ Error sish() {
     int word_count;
     CommandType cmd;
 
-    int should_continue = 1;
-    while (should_continue) {
-        char* commandInput = (char*) readline("sish> ");
-        words_result = read_from_user(&word_count);
-        // Confirm that words is "ok"
-        if (!words_result.is_ok) {
-            return words_result;
-        }
-        // If no text has been entered, don't execute the rest of the code. Simply continue to the next loop.
-        if (word_count == 0) {
-            continue;
-        }
-        // Words has been confirmed as "ok" and has a length greater than 0. We can safely unwrap it now.
-        words = *(char***)words_result.value_ptr;
-        add_history();
-        // Parse the first word of the input to idenify the type of command
-        cmd = parse(words[0]);
-
-        // EXIT command
-        if (cmd == EXIT) {
-            should_continue = 0;
-        } else
-        if (cmd == CONSOLE) { 
-            command_result = command(words, word_count);
-            if (command_result.is_ok) {
-            } else {
-                if (command_result.error_code == 255) {
-                    printf("Something went wrong with the child process. Please try again.\n");
-                } else
-                if (command_result.error_code == 254) {
-                    printf("Command not found. Please try again.\n");
-                } else
-                if (command_result.error_code == 1) {
-                    // A recoverable error has occured in the child process, so we do nothing.
-                } else {
-                    // We cannot guarantee that the shell can keep going
-                    cleanup_words(words, word_count);
-                    return command_result;
-                }
-            }
-        } else
-        // CD command
-        if (cmd == CD) {
-            if (words[1] == NULL) {
-                // If no directory is provided, change to the user's home directory
-                char *home = getenv("HOME");
-                cd(home);
-            } else {
-                cd(words[1]);
-            }
-        } else
-        // HiSTORY command
-        if (cmd == HISTORY) {
-            if (words[1] == NULL) {
-                display_history();
-            }
-            /*
-            if (words[1] == "-c") {
-                clear_history();
-            } else 
-            if (words[1] == offset) {
-
-            } */
-
-        } else {
-            printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
-        }
-        cleanup_words(words, word_count);
+    words_result = read_from_user(input_str, &word_count);
+    // Confirm that words is "ok"
+    if (!words_result.is_ok) {
+        return words_result;
     }
+    // If no text has been entered, don't execute the rest of the code. Simply continue to the next loop.
+    if (word_count == 0) {
+        return new_ok(BLANK);
+    }
+    // Words has been confirmed as "ok" and has a length greater than 0. We can safely unwrap it now.
+    words = *(char***)words_result.value_ptr;
+    add_history();
+    // Parse the first word of the input to idenify the type of command
+    cmd = parse(words[0]);
+
+    // EXIT command
+    if (cmd == EXIT) {
+        *should_continue = 0;
+    } else
+    if (cmd == CONSOLE) { 
+        command_result = command(words, word_count);
+        if (command_result.is_ok) {
+        } else {
+            if (command_result.error_code == 255) {
+                printf("Something went wrong with the child process. Please try again.\n");
+            } else
+            if (command_result.error_code == 254) {
+                printf("Command not found. Please try again.\n");
+            } else
+            if (command_result.error_code == 1) {
+                // A recoverable error has occured in the child process, so we do nothing.
+            } else {
+                // We cannot guarantee that the shell can keep going
+                cleanup_words(words, word_count);
+                return command_result;
+            }
+        }
+    } else
+    // CD command
+    if (cmd == CD) {
+        if (words[1] == NULL) {
+            // If no directory is provided, change to the user's home directory
+            char *home = getenv("HOME");
+            cd(home);
+        } else {
+            cd(words[1]);
+        }
+    } else
+    // HiSTORY command
+    if (cmd == HISTORY) {
+        if (words[1] == NULL) {
+            display_history();
+        }
+        /*
+        if (words[1] == "-c") {
+            clear_history();
+        } else 
+        if (words[1] == offset) {
+
+        } */
+
+    } else {
+        printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
+    }
+    cleanup_words(words, word_count);
     return new_ok(BLANK);
 }
 
 // Error<char**>
-Error read_from_user(int* token_amt) {
+Error read_from_user(char* input_str, int* token_amt) {
     char** words;
-    char* input_str = NULL, *dup_input_str = NULL, *string_storage = NULL;
+    char* dup_input_str = NULL, *string_storage = NULL;
     char* token;
     char* savetoken;
     size_t line_size = 0;
     int i, j;
 
-    getline(&input_str, &line_size, stdin);
+    // getline(&input_str, &line_size, stdin);
     // strtok_r destroys input_str, even if we "redirect" it, so we'll need to duplicate it for the first tokenization loop.
     dup_input_str = strdup(input_str);
     // The string will need to be tokenized.
@@ -130,9 +146,6 @@ Error read_from_user(int* token_amt) {
         words[i] = (char*) malloc(sizeof(char) * j);
         strcpy(words[i], token);
     }
-
-    // We have to free input_str as getline automatically constructs a buffer for us.
-    free(input_str);
 
     return new_ok((void*)&words);
 }

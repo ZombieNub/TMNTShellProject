@@ -4,7 +4,8 @@
 #include "structs.h"
 
 Error sish();
-Error read_from_user(int* token_amt);
+Error handle_input(char* input_str, int* should_continue);
+Error read_from_user(char* input_str, int* token_amt);
 void cleanup_words(char** words, int token_amount);
 CommandType parse(char* command);
 Error command(char** words, int word_count);
