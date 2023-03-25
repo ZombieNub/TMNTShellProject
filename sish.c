@@ -74,10 +74,10 @@ Error sish() {
         } else
         // HiSTORY command
         if (cmd == HISTORY) {
-            if (words [1] == NULL) {
+            if (words[1] == NULL) {
                 display_history();
             }
-            if (words[1] == -c) {
+            if (words[1] == "-c") {
                 clear_history();
             } /*else 
             if (words[1] == offset) {
