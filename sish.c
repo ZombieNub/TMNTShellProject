@@ -23,7 +23,7 @@ Error sish() {
 
     int should_continue = 1;
     while (should_continue) {
-        char* command = readline("sish> ");
+        char* commandInput = readline("sish> ");
         words_result = read_from_user(&word_count);
         // Confirm that words is "ok"
         if (!words_result.is_ok) {
@@ -329,38 +329,41 @@ int cd(char *dir) {
 
 // appends commands to the array and increments the count
 // if the count exceeds the history size, it will remove oldest command
-void add_history(char* command) {
-  if (history_count >= MAX_HISTORY_SIZE) {
-    free(history[0]);  // free the oldest command
-    for (int i = 1; i < HISTORY_SIZE; i++) {
-      history[i-1] = history[i];  // shift all commands to the left
-    }
+void add_history(char* commandInput) {
+    int i;
+    if (history_count >= MAX_HISTORY_SIZE) {
+        free(history[0]);  // free the oldest command
+        for (int i = 1; i < MAX_HISTORY_SIZE; i++) {
+            history[i-1] = history[i];  // shift all commands to the left
+        }
     history_count--;
-  }
-  history[history_count++] = strdup(command);  // append the new command
+    }
+    history[history_count++] = strdup(commandInput);  // append the new command
 }
 
 // displays the history
 void display_history() {
-  for (int i = 0; i < history_count; i++) {
-    printf("%d %s\n", i, history[i]);
-  }
+    int i;
+    for (int i = 0; i < history_count; i++) {
+        printf("%d %s\n", i, history[i]);
+    }
 }
 
 // clears the history when history -c is used
 void clear_history() {
-  for (int i = 0; i < history_count; i++) {
-    free(history[i]);
-  }
-  history_count = 0;
+    int i;
+        for (int i = 0; i < history_count; i++) {
+            free(history[i]);
+        }
+    history_count = 0;
 }
 
 //checks if offset is valid and if so, it will execute the corresponding command
 void execute_history(char* arg) {
-  int offset = atoi(arg);
-  if (offset < 0 || offset >= history_count) {
-    printf("Invalid offset: %s\n", arg);
-    return;
-  }
-  execute_command(history[offset]);
+    int offset = atoi(arg);
+    if (offset < 0 || offset >= history_count) {
+        printf("Invalid offset: %s\n", arg);
+        return;
+    }
+    execute_command(history[offset]);
 }
