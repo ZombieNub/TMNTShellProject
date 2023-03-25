@@ -352,9 +352,9 @@ void display_history() {
 // clears the history when history -c is used
 void clear_history() {
     int i;
-        for (int i = 0; i < history_count; i++) {
-            free(history[i]);
-        }
+    for (int i = 0; i < history_count; i++) {
+        free(history[i]);
+    }
     history_count = 0;
 }
 
