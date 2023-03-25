@@ -23,7 +23,7 @@ Error sish() {
 
     int should_continue = 1;
     while (should_continue) {
-        char* commandInput = readline("sish> ");
+        char* commandInput = (char*) readline("sish> ");
         words_result = read_from_user(&word_count);
         // Confirm that words is "ok"
         if (!words_result.is_ok) {
@@ -77,9 +77,10 @@ Error sish() {
             if (words[1] == NULL) {
                 display_history();
             }
+            /*
             if (words[1] == "-c") {
                 clear_history();
-            } /*else 
+            } else 
             if (words[1] == offset) {
 
             } */
