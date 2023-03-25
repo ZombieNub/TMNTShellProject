@@ -333,7 +333,7 @@ void add_history(char* commandInput) {
     int i;
     if (history_count >= MAX_HISTORY_SIZE) {
         free(history[0]);  // free the oldest command
-        for (int i = 1; i < MAX_HISTORY_SIZE; i++) {
+        for (i = 1; i < MAX_HISTORY_SIZE; i++) {
             history[i-1] = history[i];  // shift all commands to the left
         }
     history_count--;
@@ -344,7 +344,7 @@ void add_history(char* commandInput) {
 // displays the history
 void display_history() {
     int i;
-    for (int i = 0; i < history_count; i++) {
+    for (i = 0; i < history_count; i++) {
         printf("%d %s\n", i, history[i]);
     }
 }
@@ -352,7 +352,7 @@ void display_history() {
 // clears the history when history -c is used
 void clear_history() {
     int i;
-    for (int i = 0; i < history_count; i++) {
+    for (i = 0; i < history_count; i++) {
         free(history[i]);
     }
     history_count = 0;
