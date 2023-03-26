@@ -25,9 +25,6 @@ Error sish() {
         getline(&input_str, &line_size, stdin);
         strcpy(commandInput, input_str);
         free(input_str);
-        if (!handle_input_result.is_ok) {
-            return handle_input_result;
-        }
     }
     return new_ok(BLANK);
 }
