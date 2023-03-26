@@ -11,5 +11,8 @@ CommandType parse(char* command);
 Error command(char** words, int word_count);
 char** delimit_by_pipes(char** words, int word_count, int* offset_counter, int* has_ended);
 Error run_and_wait(ShellCommand shcmd, int should_in, int should_out);
+void clear_history();
+void add_history(char* commandInput);
+void display_history();
 
 #endif
