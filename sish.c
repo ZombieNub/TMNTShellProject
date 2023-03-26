@@ -16,15 +16,18 @@ int history_count = 0;
 Error sish() {
     char* input_str;
     size_t line_size = 0;
-    char* commandInput;
+    Error handle_input_result;
 
     int should_continue = 1;
     while (should_continue) {
         line_size = 0;
         printf("sish> ");
         getline(&input_str, &line_size, stdin);
-        strcpy(commandInput, input_str);
+        handle_input_result = handle_input(input_str, &should_continue);
         free(input_str);
+        if (!handle_input_result.is_ok) {
+            return handle_input_result;
+        }
     }
     return new_ok(BLANK);
 }
@@ -33,7 +36,6 @@ Error sish() {
 Error handle_input(char* input_str, int* should_continue) {
     Error words_result;
     Error command_result;
-    Error handle_input_result;
     char** words;
     int i, j;
     int word_count;
@@ -46,7 +48,6 @@ Error handle_input(char* input_str, int* should_continue) {
     }
     // If no text has been entered, don't execute the rest of the code. Simply continue to the next loop.
     if (word_count == 0) {
-        cleanup_words(words, word_count);
         return new_ok(BLANK);
     }
     // Words has been confirmed as "ok" and has a length greater than 0. We can safely unwrap it now.
@@ -92,12 +93,15 @@ Error handle_input(char* input_str, int* should_continue) {
     if (cmd == HISTORY) {
         if (words[1] == NULL) {
             display_history();
-        } else if (strcmp(words[1], "-c") == 0) {
-            clear_history();
-        } /*else {
-            execute_history(handle_input_result);
         }
-        */
+        /*
+        if (words[1] == "-c") {
+            clear_history();
+        } else 
+        if (words[1] == offset) {
+
+        } */
+
     } else {
         printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
     }
@@ -370,17 +374,12 @@ void clear_history() {
 
 /*
 //checks if offset is valid and if so, it will execute the corresponding command
-void execute_history(char* history_count) {
-    Error handle_input_result;
-    int offset = atoi(history_count);
+void execute_history(char* arg) {
+    int offset = atoi(arg);
     if (offset < 0 || offset >= history_count) {
         printf("Invalid offset: %s\n", arg);
         return;
     }
-    handle_input(history[offset]);
-    handle_input_result = handle_input(history[offset], should_continue)
-    if (!handle_input_result.is_ok) {
-        return handle_input_result;
-    }
+    execute_command(history[offset]);
 }
 */
