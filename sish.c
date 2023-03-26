@@ -98,9 +98,10 @@ Error handle_input(char* input_str, int* should_continue) {
             display_history();
         } else if (strcmp(word[1], "-c") == 0) {
             clear_history();
-        } else {
+        } /*else {
             execute_history(handle_input_result);
         }
+        */
     } else {
         printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
     }
@@ -371,7 +372,7 @@ void clear_history() {
     history_count = 0;
 }
 
-
+/*
 //checks if offset is valid and if so, it will execute the corresponding command
 void execute_history(char* history_count) {
     Error handle_input_result;
@@ -386,4 +387,4 @@ void execute_history(char* history_count) {
         return handle_input_result;
     }
 }
-
+*/
