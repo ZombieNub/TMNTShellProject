@@ -24,7 +24,6 @@ Error sish() {
         printf("sish> ");
         getline(&input_str, &line_size, stdin);
         strcpy(commandInput, input_str);
-        handle_input_result = handle_input(input_str, &should_continue);
         free(input_str);
         if (!handle_input_result.is_ok) {
             return handle_input_result;
@@ -96,7 +95,7 @@ Error handle_input(char* input_str, int* should_continue) {
     if (cmd == HISTORY) {
         if (words[1] == NULL) {
             display_history();
-        } else if (strcmp(word[1], "-c") == 0) {
+        } else if (strcmp(words[1], "-c") == 0) {
             clear_history();
         } /*else {
             execute_history(handle_input_result);
