@@ -14,16 +14,23 @@ int history_count = 0;
 
 // Error<Blank>
 Error sish() {
-    char* input_str;
+    char* input_str, *command_input;
     size_t line_size = 0;
     Error handle_input_result;
 
     int should_continue = 1;
     while (should_continue) {
         line_size = 0;
+        // Prompt the user for input
         printf("sish> ");
         getline(&input_str, &line_size, stdin);
+        // Add the command to history
+        command_input = malloc(sizeof(char) * line_size);
+        strcpy(command_input, input_str);
+        add_history(command_input);
+        // Handle the command
         handle_input_result = handle_input(input_str, &should_continue);
+        // Cleanup and return errors
         free(input_str);
         if (!handle_input_result.is_ok) {
             return handle_input_result;
@@ -36,8 +43,9 @@ Error sish() {
 Error handle_input(char* input_str, int* should_continue) {
     Error words_result;
     Error command_result;
+    Error cd_result;
     char** words;
-    int i, j;
+    int i, j, command_offset;
     int word_count;
     CommandType cmd;
 
@@ -52,7 +60,6 @@ Error handle_input(char* input_str, int* should_continue) {
     }
     // Words has been confirmed as "ok" and has a length greater than 0. We can safely unwrap it now.
     words = *(char***)words_result.value_ptr;
-    add_history();
     // Parse the first word of the input to idenify the type of command
     cmd = parse(words[0]);
 
@@ -81,26 +88,53 @@ Error handle_input(char* input_str, int* should_continue) {
     } else
     // CD command
     if (cmd == CD) {
-        if (words[1] == NULL) {
+        if (word_count == 1) {
             // If no directory is provided, change to the user's home directory
             char *home = getenv("HOME");
-            cd(home);
+            cd_result = cd(home);
         } else {
-            cd(words[1]);
+            cd_result = cd(words[1]);
+        }
+        if (!cd_result.is_ok) {
+            if (cd_result.error_code != 0) {
+                cleanup_words(words, word_count);
+                return cd_result;
+            } else {
+                // In this case, we know this is a directory not found error, which is recoverable
+                printf("Directory not found.\n");
+            }
         }
     } else
     // HiSTORY command
     if (cmd == HISTORY) {
-        if (words[1] == NULL) {
+        if (word_count == 1) {
             display_history();
-        }
-        /*
-        if (words[1] == "-c") {
+        } else
+        if (strcmp(words[1], "-c") == 0) {
             clear_history();
-        } else 
-        if (words[1] == offset) {
-
-        } */
+        } else {
+            // We need to try and convert the second argument to an integer
+            // Otherwise, there is invalid input and we need to return an error
+            char *endptr;
+            command_offset = strtol(words[1], &endptr, 10);
+            if (*endptr != '\0') {
+                // If this is the case, then the conversion failed
+                printf("Not a valid history index (not a number)");
+            } else {
+                // Offset is a valid number. We need to do boundary checking
+                if (command_offset < 0) {
+                    printf("Not a valid history index (must be greater than 0)");
+                } else
+                if (command_offset >= history_count) {
+                    printf("Not a valid history index (must exist in the history)");
+                } else
+                {
+                    // This is a valid index, so we can just call it
+                    cleanup_words(words, word_count);
+                    return handle_input(history[command_offset], should_continue);
+                }
+            }
+        }
 
     } else {
         printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
@@ -332,13 +366,12 @@ Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
     return new_ok(BLANK);
 }
 
-// uses chdir() system call to execute cd command, if invalid it will display error
-int cd(char *dir) {
+// uses chdir() system call to execute cd command, if invalid it will return the error
+Error cd(char *dir) {
     if (chdir(dir) == -1) {
-        perror("cd");
-        return 1;
+        return new_err(0, "Directory not found.");
     }
-    return 0;
+    return new_ok(BLANK);
 }
 
 // appends commands to the array and increments the count
@@ -359,7 +392,7 @@ void add_history(char* commandInput) {
 void display_history() {
     int i;
     for (i = 0; i < history_count; i++) {
-        printf("%d %s\n", i, history[i]);
+        printf("(%d): %s", i, history[i]);
     }
 }
 
