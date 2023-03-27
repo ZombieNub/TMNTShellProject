@@ -1,2 +1,2 @@
-sishmake: main.c sish.c structs.c
-	gcc -o sish.out main.c sish.c structs.c -I .
+sishmake: sish.c
+	gcc -o sish.out sish.c -I .
