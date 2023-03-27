@@ -24,6 +24,7 @@ typedef struct Option {
     int is_some; // If 1, this value "exists". If 0, this value does not exist.
     void* value_ptr; // Pointer to the real underlying value. Remember to dereference correctly, or you will have garbage data
 } Option;
+// It's worth noting that Option is never used in the code. It was intended for history, but wasn't actually neccessary
 
 typedef struct Error {
     int is_ok; // If 1, the value exists. If 0, the error exists.
@@ -109,6 +110,7 @@ int main() {
 }
 */
 
+// Converts the command type to string, for printing and debug purposes
 char* command_to_string(CommandType cmd) {
     if (cmd == CONSOLE) {
         return "Console";
@@ -122,10 +124,12 @@ char* command_to_string(CommandType cmd) {
     if (cmd == HISTORY) {
         return "History";
     } else {
+        // Not supposed to reach this branch
         return "I'm not exactly sure how you did this.";
     }
 }
 
+// Constructs a new "Some" variant of Option
 Option new_some(void* value_ptr) {
     Option opt;
     opt.is_some = 1;
@@ -133,12 +137,14 @@ Option new_some(void* value_ptr) {
     return opt;
 }
 
+// Constructs a new "None" variant of Option
 Option new_none() {
     Option opt;
     opt.is_some = 0;
     return opt;
 }
 
+// Constructs a new "Ok" variant of Error
 Error new_ok(void* value_ptr) {
     Error err;
     err.is_ok = 1;
@@ -146,6 +152,7 @@ Error new_ok(void* value_ptr) {
     return err;
 }
 
+// Constructs a new "Err" variant of Error
 Error new_err(int error_code, char* error_string) {
     Error err;
     err.is_ok = 0;
@@ -154,6 +161,7 @@ Error new_err(int error_code, char* error_string) {
     return err;
 }
 
+// Header functions for the shell code.
 Error sish();
 Error handle_input(char* input_str, int* should_continue);
 Error read_from_user(char* input_str, int* token_amt);
@@ -167,6 +175,7 @@ void clear_history();
 void add_history(char* commandInput);
 void display_history();
 
+// Holds all commands entered by the user
 char* history[MAX_HISTORY_SIZE];
 int history_count = 0;
 
@@ -174,7 +183,7 @@ int history_count = 0;
 int main() {
     Error program_result = sish();
     if (program_result.is_ok) {
-
+        // Since we're ok, we just do nothing.
     } else {
         printf("Error (%d): %s\n", program_result.error_code, program_result.error_string);
     }
@@ -182,6 +191,7 @@ int main() {
 }
 
 // Error<Blank>
+// Runs the shell, prompting for input from the user, processing it, and running the relevant commands
 Error sish() {
     char* input_str, *command_input;
     size_t line_size = 0;
@@ -218,6 +228,7 @@ Error handle_input(char* input_str, int* should_continue) {
     int word_count;
     CommandType cmd;
 
+    // Convert the string to individual words
     words_result = read_from_user(input_str, &word_count);
     // Confirm that words is "ok"
     if (!words_result.is_ok) {
@@ -234,9 +245,11 @@ Error handle_input(char* input_str, int* should_continue) {
 
     // EXIT command
     if (cmd == EXIT) {
+        // Tell the sish command to stop looping
         *should_continue = 0;
     } else
     if (cmd == CONSOLE) { 
+        // Run the command and handle the relevant error
         command_result = command(words, word_count);
         if (command_result.is_ok) {
         } else {
@@ -277,11 +290,16 @@ Error handle_input(char* input_str, int* should_continue) {
     // HiSTORY command
     if (cmd == HISTORY) {
         if (word_count == 1) {
+            // Occurs if the input is simply "history"
+            // In this case, we list all entries in history
             display_history();
         } else
         if (strcmp(words[1], "-c") == 0) {
+            // Occurs if the input is simply "history -c"
+            // In this case, we clear the history
             clear_history();
         } else {
+            // Occurs if the input is "history X", but we don't yet know what X is
             // We need to try and convert the second argument to an integer
             // Otherwise, there is invalid input and we need to return an error
             char *endptr;
@@ -308,6 +326,7 @@ Error handle_input(char* input_str, int* should_continue) {
     } else {
         printf("NOT YET IMPLEMENTED: %s\n", command_to_string(cmd));
     }
+    // We no longer need the command, so we should free its memory
     cleanup_words(words, word_count);
     return new_ok(BLANK);
 }
@@ -321,7 +340,6 @@ Error read_from_user(char* input_str, int* token_amt) {
     size_t line_size = 0;
     int i, j;
 
-    // getline(&input_str, &line_size, stdin);
     // strtok_r destroys input_str, even if we "redirect" it, so we'll need to duplicate it for the first tokenization loop.
     dup_input_str = strdup(input_str);
     // The string will need to be tokenized.
@@ -350,9 +368,12 @@ Error read_from_user(char* input_str, int* token_amt) {
         strcpy(words[i], token);
     }
 
+    // We don't free memory, as freeing it will be the job of handle_input
+    // Since no errors have occured, we simply return the words
     return new_ok((void*)&words);
 }
 
+// This cleans up each word in an array of words. Convinence function for deallocating the result of read_from_user
 void cleanup_words(char** words, int token_amount) {
     int i;
     for (i = 0; i < token_amount; i++) {
@@ -361,6 +382,7 @@ void cleanup_words(char** words, int token_amount) {
     free(words);
 }
 
+// Parse the first argument to see if it's exit, cd, history, or a unix program
 CommandType parse(char* command) {
     if (strcmp("exit", command) == 0) {
         return EXIT;
@@ -376,6 +398,7 @@ CommandType parse(char* command) {
 }
 
 // Error<BLANK>
+// Process one or multiple commands. Supports piping
 Error command(char** words, int word_count) {
     int chunk_count;
     char** chunk;
@@ -442,6 +465,7 @@ Error command(char** words, int word_count) {
     return new_ok(BLANK);
 }
 
+// Delimits an array of words by pipe characters, returning a single chunk at a time.
 // word_counter should begin at 0. has_ended outputs a value and thus anything can be passed in
 char** delimit_by_pipes(char** words, int word_count, int* offset_counter, int* has_ended) {
     int chunk_size;
@@ -484,29 +508,34 @@ char** delimit_by_pipes(char** words, int word_count, int* offset_counter, int* 
 }
 
 // Error<BLANK>
+// Forks and runs a single unix program with pipes
 Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
     /*
-    int i;
-    printf("Command (PS: %d, %d):", should_in, should_out);
-    for (i = 0; shcmd.command[i] != NULL; i++) {
-        printf(" %s", shcmd.command[i]);
-    }
-    printf("\n");
+    The pipes for forked processes is handled by the command function, as it shouldn't be the individual
+    program's responsibility. This means we have to go off of should_in and should_out and open/close
+    the pipes accordingly. We can't do this in the command function, since the piping will only work correctly
+    once we have forked the unix process, hence why the responsibility for closing is offloaded here, but
+    the responsibility for what should be closed is handled by command
+    The general rule is:
+        If the program is the first one, do not close input (as it has no input pipe and would crash)
+        If the program is the last one, do not close output (same as above: no output pipe)
     */
-    //return new_ok(BLANK);
 
     int child_exit_status;
     int execvp_result;
+    // Fork the process. The child will execute the unix program
     pid_t fork_result = fork();
     if (fork_result == -1) {
         return new_err(errno, "Fork failure");
     }
     if (fork_result == 0) {
         // We are the child process
+        // If we are the first command, do not override the input pipe
         if (should_in == 0) {
             dup2(shcmd.stdin, STDIN_FILENO);
             close(shcmd.stdin);
         }
+        // If we are the last command, do not override the output pipe
         if (should_out == 0) {
             dup2(shcmd.stdout, STDOUT_FILENO);
             close(shcmd.stdout);
@@ -518,12 +547,15 @@ Error run_and_wait(ShellCommand shcmd, int should_in, int should_out) {
         exit(-2);
     } else {
         // We are the parent process
+        // If we are the first command, do not attempt to close the input pipe
         if (should_in == 0) {
             close(shcmd.stdin);
         }
+        // If we are the last command, do not attempt to close the output pipe
         if (should_out == 0) {
             close(shcmd.stdout);
         }
+        // Wait for the child to complete the process. Read the status: if it's not 0, there was an error
         wait(&child_exit_status);
         if (WIFEXITED(child_exit_status)) {
             int es = WEXITSTATUS(child_exit_status);
@@ -573,15 +605,3 @@ void clear_history() {
     }
     history_count = 0;
 }
-
-/*
-//checks if offset is valid and if so, it will execute the corresponding command
-void execute_history(char* arg) {
-    int offset = atoi(arg);
-    if (offset < 0 || offset >= history_count) {
-        printf("Invalid offset: %s\n", arg);
-        return;
-    }
-    execute_command(history[offset]);
-}
-*/
